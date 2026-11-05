@@ -4,6 +4,7 @@ mod clouds;
 mod controls;
 mod fragment;
 mod framebuffer;
+mod frozen;
 mod gas;
 mod hud;
 mod matrix;
@@ -17,6 +18,7 @@ mod star;
 mod surface;
 mod triangle;
 mod vertex;
+mod volcanic;
 
 use framebuffer::Framebuffer;
 
@@ -35,6 +37,9 @@ pub struct Uniforms {
     pub night_lights_enabled: bool,
     pub vortex_enabled: bool,
     pub bump_enabled: bool,
+    pub parallax_enabled: bool,
+    pub cloud_shadows_enabled: bool,
+    pub aurora_enabled: bool,
     pub light_angle: f32,
     pub model_matrix: Matrix,
     pub view_matrix: Matrix,
@@ -103,6 +108,9 @@ fn main() {
         night_lights_enabled: true,
         vortex_enabled: true,
         bump_enabled: true,
+        parallax_enabled: true,
+        cloud_shadows_enabled: true,
+        aurora_enabled: true,
         light_angle: (-3.0_f32).atan2(5.0),
         model_matrix: Matrix::identity(),
         view_matrix: matrix::create_view_matrix(
@@ -131,6 +139,8 @@ fn main() {
     clouds::prepare(&uniforms);
     gas::prepare(&uniforms);
     star::prepare(&uniforms);
+    volcanic::prepare(&uniforms);
+    frozen::prepare(&uniforms);
     let mut framebuffer = Framebuffer::new(WIDTH, HEIGHT, &mut window, &thread);
     let mut fragments = Vec::new();
     let background = Color::new(9, 12, 35, 255);
@@ -151,7 +161,9 @@ fn main() {
             "1" => shaders::Shader::Estrella,
             "2" => shaders::Shader::Rocoso,
             "3" => shaders::Shader::Gaseoso,
-            _ => panic!("El shader debe ser 1, 2 o 3"),
+            "4" => shaders::Shader::Volcanico,
+            "5" => shaders::Shader::Helado,
+            _ => panic!("El shader debe estar entre 1 y 5"),
         };
     }
     let capture = argument("--capture");
@@ -161,6 +173,9 @@ fn main() {
     uniforms.night_lights_enabled = !arguments.iter().any(|arg| arg == "--no-night-lights");
     uniforms.vortex_enabled = !arguments.iter().any(|arg| arg == "--no-vortex");
     uniforms.bump_enabled = !arguments.iter().any(|arg| arg == "--no-bump");
+    uniforms.parallax_enabled = !arguments.iter().any(|arg| arg == "--no-parallax");
+    uniforms.cloud_shadows_enabled = !arguments.iter().any(|arg| arg == "--no-cloud-shadows");
+    uniforms.aurora_enabled = !arguments.iter().any(|arg| arg == "--no-aurora");
     if let Some(value) = argument("--light-angle") {
         let degrees: f32 = value.parse().expect("El ángulo debe ser un número");
         assert!(degrees.is_finite(), "El ángulo debe ser finito");
@@ -189,6 +204,24 @@ fn main() {
         controls.set_distance(distance);
     }
     let benchmark_window = arguments.iter().any(|arg| arg == "--benchmark-window");
+    if let Some(directory) = argument("--capture-demo") {
+        std::fs::create_dir_all(directory).expect("No se pudo crear la carpeta de evidencia");
+        for frame in 0..16 {
+            let phase = frame as f32 / 15.0;
+            match uniforms.shader {
+                shaders::Shader::Volcanico => controls.set_yaw(-0.30 + phase * 0.60),
+                _ => uniforms.light_angle = -1.2 + phase * 1.6,
+            }
+            controls.update(&window, &mut uniforms);
+            // Cámara con tiempo congelado para parallax; luz móvil para sombras.
+            uniforms.time = fixed_time.unwrap_or(2.0);
+            framebuffer.clear(background);
+            render(&mut framebuffer, &vertices, &uniforms, &mut fragments);
+            let path = std::path::Path::new(directory).join(format!("frame-{frame:02}.png"));
+            framebuffer.save(path.to_str().expect("Ruta de captura inválida"));
+        }
+        return;
+    }
     if benchmark_window || arguments.iter().any(|arg| arg == "--benchmark") {
         window.set_target_fps(0);
         controls.update(&window, &mut uniforms);
@@ -212,7 +245,10 @@ fn main() {
         println!("Mediana CPU (9 cuadros): {:.2} ms", samples[4]);
         if benchmark_window {
             complete_samples.sort_by(f64::total_cmp);
-            println!("Mediana con presentación y HUD: {:.2} ms", complete_samples[4]);
+            println!(
+                "Mediana con presentación y HUD: {:.2} ms",
+                complete_samples[4]
+            );
         }
         if let Some(path) = capture {
             framebuffer.save(path);

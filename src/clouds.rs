@@ -28,8 +28,17 @@ pub fn blend(surface_color: Vector3, fragment: &Fragment, uniforms: &Uniforms) -
         return surface_color;
     }
 
-    // Solo cambian las coordenadas de las nubes. El terreno conserva las suyas.
-    let p = fragment.object_position;
+    let [mask, detail] = density_at(fragment.object_position, uniforms);
+    let cloud_color = Vector3::new(0.95, 0.98, 1.0)
+        * ((0.86 + detail * 0.14) * (0.20 + 0.80 * fragment.intensity));
+    mix(
+        surface_color,
+        cloud_color,
+        mask * CLOUD_OPACITY * (0.65 + detail * 0.35),
+    )
+}
+
+fn density_at(p: Vector3, uniforms: &Uniforms) -> [f32; 2] {
     let (sin, cos) = (uniforms.time * CLOUD_SPEED).sin_cos();
     let position = Vector3::new(p.x * cos - p.z * sin, p.y, p.x * sin + p.z * cos);
     let [density, detail] = CLOUDS.get().expect("Nubes preparadas").sample(position);
@@ -41,11 +50,42 @@ pub fn blend(surface_color: Vector3, fragment: &Fragment, uniforms: &Uniforms) -
     } else {
         smoothstep(threshold, threshold + 0.12, density)
     };
-    let cloud_color = Vector3::new(0.95, 0.98, 1.0)
-        * ((0.86 + detail * 0.14) * (0.20 + 0.80 * fragment.intensity));
-    mix(
-        surface_color,
-        cloud_color,
-        mask * CLOUD_OPACITY * (0.65 + detail * 0.35),
-    )
+    [mask, detail]
+}
+
+// Intersección analítica del rayo hacia la luz con la altura de las nubes.
+// No añade mallas: consulta el mismo campo que se usa para dibujar las nubes.
+pub fn shadow(fragment: &Fragment, uniforms: &Uniforms) -> f32 {
+    if !uniforms.clouds_enabled || uniforms.cloud_coverage <= 0.0 {
+        return 1.0;
+    }
+    let light = (uniforms.light_position - fragment.world_position).normalized();
+    let light = crate::patterns::object_direction(light, uniforms);
+    let p = fragment.object_position;
+    if p.normalized().dot(light) <= 0.02 {
+        return 1.0;
+    }
+    let [mask, _] = density_at(cloud_intersection(p, light), uniforms);
+    1.0 - mask * 0.65
+}
+
+fn cloud_intersection(p: Vector3, light: Vector3) -> Vector3 {
+    let b = p.dot(light);
+    let distance = -b + (b * b + 0.93_f32.powi(2) - p.dot(p)).max(0.0).sqrt();
+    p + light * distance
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn shadow_projection_follows_light_on_cloud_shell() {
+        let p = Vector3::new(0.0, 0.0, 0.8660254);
+        let a = cloud_intersection(p, Vector3::new(0.8, 0.0, 0.6));
+        let b = cloud_intersection(p, Vector3::new(-0.8, 0.0, 0.6));
+        assert!((a.length() - 0.93).abs() < 0.00001);
+        assert!((b.length() - 0.93).abs() < 0.00001);
+        assert!(a.x > 0.0 && b.x < 0.0);
+        assert!((a.x + b.x).abs() < 0.00001);
+    }
 }

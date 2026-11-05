@@ -9,6 +9,9 @@ pub struct Controls {
 }
 
 impl Controls {
+    pub fn set_yaw(&mut self, radians: f32) {
+        self.yaw = radians;
+    }
     pub fn set_distance(&mut self, distance: f32) {
         self.distance = distance.clamp(2.2, 6.0);
     }
@@ -32,6 +35,21 @@ impl Controls {
         }
         if window.is_key_pressed(KeyboardKey::KEY_THREE) {
             uniforms.shader = Shader::Gaseoso;
+        }
+        if window.is_key_pressed(KeyboardKey::KEY_FOUR) {
+            uniforms.shader = Shader::Volcanico;
+        }
+        if window.is_key_pressed(KeyboardKey::KEY_FIVE) {
+            uniforms.shader = Shader::Helado;
+        }
+        if window.is_key_pressed(KeyboardKey::KEY_P) {
+            uniforms.parallax_enabled = !uniforms.parallax_enabled;
+        }
+        if window.is_key_pressed(KeyboardKey::KEY_H) {
+            uniforms.cloud_shadows_enabled = !uniforms.cloud_shadows_enabled;
+        }
+        if window.is_key_pressed(KeyboardKey::KEY_U) {
+            uniforms.aurora_enabled = !uniforms.aurora_enabled;
         }
         if window.is_key_pressed(KeyboardKey::KEY_N) {
             uniforms.show_normals = !uniforms.show_normals;

@@ -74,22 +74,24 @@ pub fn draw(drawing: &mut RaylibDrawHandle, hud: &Hud, x: i32, uniforms: &Unifor
         uniforms.time
     );
     write(drawing, &status, x + 22, 59, 18.0, muted);
-    let mut y = 95;
+    let mut y = 85;
     let mut row = |key: &str, label: &str, heading: bool| {
         if heading {
-            y += 14;
+            y += 10;
             write(drawing, label, x + 22, y, 18.0, muted);
-            y += 29;
+            y += 27;
         } else {
             write(drawing, key, x + 22, y, 18.0, muted);
             write(drawing, label, x + 152, y, 19.0, text);
-            y += 26;
+            y += 25;
         }
     };
     row("", "Cuerpos celestes", true);
     row("1", "Estrella", false);
     row("2", "Planeta rocoso", false);
     row("3", "Gigante gaseoso", false);
+    row("4", "Planeta volcánico", false);
+    row("5", "Planeta helado", false);
     row("", "Cámara y luz", true);
     row("W / S", "Orbitar vertical", false);
     row("A / D", "Orbitar horizontal", false);
@@ -129,6 +131,47 @@ pub fn draw(drawing: &mut RaylibDrawHandle, hud: &Hud, x: i32, uniforms: &Unifor
             row(
                 "B",
                 &format!("Relieve: {}", state(uniforms.bump_enabled)),
+                false,
+            );
+        }
+        Shader::Volcanico => {
+            row("", "Corteza y lava", true);
+            row(
+                "P",
+                &format!("Parallax: {}", state(uniforms.parallax_enabled)),
+                false,
+            );
+            row(
+                "B",
+                &format!("Relieve: {}", state(uniforms.bump_enabled)),
+                false,
+            );
+        }
+        Shader::Helado => {
+            row("", "Hielo y auroras", true);
+            row(
+                "C",
+                &format!("Nubes: {}", state(uniforms.clouds_enabled)),
+                false,
+            );
+            row(
+                "H",
+                &format!("Sombras: {}", state(uniforms.cloud_shadows_enabled)),
+                false,
+            );
+            row(
+                "U",
+                &format!("Auroras: {}", state(uniforms.aurora_enabled)),
+                false,
+            );
+            row(
+                "E",
+                &format!("Reflejos: {}", state(uniforms.specular_enabled)),
+                false,
+            );
+            row(
+                "Z / X",
+                &format!("Cobertura: {:.0}%", uniforms.cloud_coverage * 100.0),
                 false,
             );
         }
