@@ -32,6 +32,7 @@ pub struct Uniforms {
     pub cloud_coverage: f32,
     pub night_lights_enabled: bool,
     pub vortex_enabled: bool,
+    pub bump_enabled: bool,
     pub light_angle: f32,
     pub model_matrix: Matrix,
     pub view_matrix: Matrix,
@@ -75,6 +76,7 @@ fn main() {
         cloud_coverage: 0.45,
         night_lights_enabled: true,
         vortex_enabled: true,
+        bump_enabled: true,
         light_angle: (-3.0_f32).atan2(5.0),
         model_matrix: Matrix::identity(),
         view_matrix: matrix::create_view_matrix(
@@ -126,6 +128,7 @@ fn main() {
     uniforms.clouds_enabled = !arguments.iter().any(|arg| arg == "--no-clouds");
     uniforms.night_lights_enabled = !arguments.iter().any(|arg| arg == "--no-night-lights");
     uniforms.vortex_enabled = !arguments.iter().any(|arg| arg == "--no-vortex");
+    uniforms.bump_enabled = !arguments.iter().any(|arg| arg == "--no-bump");
     if let Some(value) = argument("--light-angle") {
         let degrees: f32 = value.parse().expect("El ángulo debe ser un número");
         assert!(degrees.is_finite(), "El ángulo debe ser finito");
@@ -156,7 +159,7 @@ fn main() {
         window.set_window_title(
             &thread,
             &format!(
-                "{} | {} t={:.1}s | N:{} E:{} C:{} {:.0}% V:{} T:{} | Luz:{:.0}°",
+                "{} | {} t={:.1}s | N:{} E:{} C:{} {:.0}% V:{} T:{} B:{} | Luz:{:.0}°",
                 uniforms.shader.name(),
                 if controls.paused {
                     "Pausado"
@@ -178,6 +181,7 @@ fn main() {
                     "no"
                 },
                 if uniforms.vortex_enabled { "sí" } else { "no" },
+                if uniforms.bump_enabled { "sí" } else { "no" },
                 uniforms.light_angle.to_degrees(),
             ),
         );

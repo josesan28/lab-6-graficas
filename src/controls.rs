@@ -44,6 +44,9 @@ impl Controls {
         if window.is_key_pressed(KeyboardKey::KEY_T) {
             uniforms.vortex_enabled = !uniforms.vortex_enabled;
         }
+        if window.is_key_pressed(KeyboardKey::KEY_B) {
+            uniforms.bump_enabled = !uniforms.bump_enabled;
+        }
         if window.is_key_down(KeyboardKey::KEY_J) {
             uniforms.light_angle -= delta;
         }

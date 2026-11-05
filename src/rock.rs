@@ -11,6 +11,36 @@ const COAST_WIDTH: f32 = 0.025;
 const SNOW_HEIGHT: f32 = 0.67;
 const WATER_SHININESS: f32 = 72.0;
 const WATER_SPECULAR: f32 = 0.85;
+const BUMP_STRENGTH: f32 = 0.16;
+const BUMP_STEP: f32 = 0.003;
+
+fn bumped_normal(fragment: &Fragment, uniforms: &Uniforms, height: f32) -> Vector3 {
+    let land = smoothstep(SEA_LEVEL + 0.012, SEA_LEVEL + 0.065, height);
+    if !uniforms.bump_enabled || land <= 0.0 {
+        return fragment.normal;
+    }
+
+    // Las diferencias centrales aproximan la pendiente del campo de altura.
+    let p = fragment.object_position;
+    let x = Vector3::new(BUMP_STEP, 0.0, 0.0);
+    let y = Vector3::new(0.0, BUMP_STEP, 0.0);
+    let z = Vector3::new(0.0, 0.0, BUMP_STEP);
+    let gradient = Vector3::new(
+        height_at(p + x, uniforms) - height_at(p - x, uniforms),
+        height_at(p + y, uniforms) - height_at(p - y, uniforms),
+        height_at(p + z, uniforms) - height_at(p - z, uniforms),
+    ) / (2.0 * BUMP_STEP);
+
+    // Lleva la pendiente al espacio de iluminación y elimina su componente normal.
+    let transformed = crate::pipeline::transform(
+        &uniforms.model_matrix,
+        Vector4::new(gradient.x, gradient.y, gradient.z, 0.0),
+    );
+    let gradient = Vector3::new(transformed.x, transformed.y, transformed.z);
+    let normal = fragment.normal;
+    let tangent_gradient = gradient - normal * gradient.dot(normal);
+    (normal - tangent_gradient * (BUMP_STRENGTH * land)).normalized()
+}
 
 fn height_at(position: Vector3, uniforms: &Uniforms) -> f32 {
     let warp_position = position * 2.0;
@@ -63,14 +93,16 @@ pub fn shade(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
     let terrain = mix(terrain, Vector3::new(0.91, 0.97, 1.0), snow);
     let color = mix(ocean, terrain, land_mask);
 
-    let diffuse = color * (0.16 + 0.84 * fragment.intensity);
+    let normal = bumped_normal(fragment, uniforms, height);
+    let light = (uniforms.light_position - fragment.world_position).normalized();
+    let intensity = normal.dot(light).max(0.0);
+    let diffuse = color * (0.16 + 0.84 * intensity);
 
     // El reflejo depende de la luz y de la posición de la cámara.
-    let light = (uniforms.light_position - fragment.world_position).normalized();
     let view = (uniforms.camera_position - fragment.world_position).normalized();
     let halfway = (light + view).normalized();
-    let specular = if uniforms.specular_enabled && fragment.normal.dot(light) > 0.0 {
-        fragment.normal.dot(halfway).max(0.0).powf(WATER_SHININESS)
+    let specular = if uniforms.specular_enabled && intensity > 0.0 {
+        normal.dot(halfway).max(0.0).powf(WATER_SHININESS)
     } else {
         0.0
     };
