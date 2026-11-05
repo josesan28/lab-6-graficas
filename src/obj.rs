@@ -22,16 +22,10 @@ pub fn load(path: &str) -> Result<Vec<Vertex>, tobj::LoadError> {
                     mesh.normals[index * 3 + 2],
                 )
             };
-            let tex_coords = if mesh.texcoords.is_empty() {
-                Vector2::zero()
-            } else {
-                Vector2::new(mesh.texcoords[index * 2], mesh.texcoords[index * 2 + 1])
-            };
             vertices.push(Vertex {
                 position,
                 normal,
                 smooth_normal: Vector3::zero(),
-                tex_coords,
             });
         }
     }

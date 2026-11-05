@@ -43,21 +43,43 @@ pub struct Uniforms {
     pub smooth_normals: bool,
 }
 
-fn render(framebuffer: &mut Framebuffer, vertices: &[vertex::Vertex], uniforms: &Uniforms) {
+fn render(
+    framebuffer: &mut Framebuffer,
+    vertices: &[vertex::Vertex],
+    uniforms: &Uniforms,
+    fragments: &mut Vec<fragment::Fragment>,
+) {
+    fragments.clear();
     let transformed: Vec<_> = vertices
         .iter()
         .map(|vertex| pipeline::vertex_shader(vertex, uniforms))
         .collect();
     for face in transformed.chunks_exact(3) {
-        for fragment in triangle::triangle(face, uniforms) {
-            let color = shaders::fragment_shader(&fragment, uniforms);
-            framebuffer.point(
-                fragment.position.x as usize,
-                fragment.position.y as usize,
-                fragment.depth,
-                color,
-            );
+        triangle::triangle(face, uniforms, |fragment| {
+            fragments.push(fragment);
+        });
+    }
+    // Cada hilo calcula colores de un bloque distinto. Raylib queda en el hilo principal.
+    let workers = std::thread::available_parallelism()
+        .map_or(1, |count| count.get())
+        .min(8);
+    let chunk_size = fragments.len().div_ceil(workers).max(1);
+    std::thread::scope(|scope| {
+        for chunk in fragments.chunks_mut(chunk_size) {
+            scope.spawn(move || {
+                for fragment in chunk {
+                    fragment.color = shaders::fragment_shader(fragment, uniforms);
+                }
+            });
         }
+    });
+    for fragment in fragments {
+        framebuffer.point(
+            fragment.position.x as usize,
+            fragment.position.y as usize,
+            fragment.depth,
+            fragment.color,
+        );
     }
 }
 
@@ -102,6 +124,7 @@ fn main() {
     window.set_target_fps(60);
 
     let mut framebuffer = Framebuffer::new(WIDTH, HEIGHT, &mut window, &thread);
+    let mut fragments = Vec::new();
     let background = Color::new(9, 12, 35, 255);
 
     let smoke_check = std::env::args().any(|arg| arg == "--smoke-check");
@@ -151,6 +174,31 @@ fn main() {
         time
     });
 
+    if let Some(value) = argument("--distance") {
+        let distance: f32 = value.parse().expect("La distancia debe ser un número");
+        assert!(distance.is_finite(), "La distancia debe ser finita");
+        controls.set_distance(distance);
+    }
+    if arguments.iter().any(|arg| arg == "--benchmark") {
+        controls.update(&window, &mut uniforms);
+        uniforms.time = fixed_time.unwrap_or(2.0);
+        let mut samples = Vec::new();
+        for index in 0..10 {
+            let start = std::time::Instant::now();
+            framebuffer.clear(background);
+            render(&mut framebuffer, &vertices, &uniforms, &mut fragments);
+            if index > 0 {
+                samples.push(start.elapsed().as_secs_f64() * 1000.0);
+            }
+        }
+        samples.sort_by(f64::total_cmp);
+        println!("Mediana CPU (9 cuadros): {:.2} ms", samples[4]);
+        if let Some(path) = capture {
+            framebuffer.save(path);
+        }
+        return;
+    }
+
     while !window.window_should_close() {
         controls.update(&window, &mut uniforms);
         if let Some(time) = fixed_time {
@@ -186,7 +234,7 @@ fn main() {
             ),
         );
         framebuffer.clear(background);
-        render(&mut framebuffer, &vertices, &uniforms);
+        render(&mut framebuffer, &vertices, &uniforms, &mut fragments);
         if let Some(path) = capture {
             framebuffer.save(path);
             break;

@@ -9,6 +9,10 @@ pub struct Controls {
 }
 
 impl Controls {
+    pub fn set_distance(&mut self, distance: f32) {
+        self.distance = distance.clamp(2.2, 6.0);
+    }
+
     pub fn new() -> Self {
         Self {
             yaw: 0.0,

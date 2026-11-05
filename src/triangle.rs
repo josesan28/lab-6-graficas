@@ -1,7 +1,7 @@
 use crate::{Uniforms, fragment::Fragment, pipeline::lighting, vertex::RasterVertex};
 use raylib::prelude::*;
 
-pub fn triangle(vertices: &[RasterVertex], uniforms: &Uniforms) -> Vec<Fragment> {
+pub fn triangle(vertices: &[RasterVertex], uniforms: &Uniforms, mut emit: impl FnMut(Fragment)) {
     let a = &vertices[0];
     let b = &vertices[1];
     let c = &vertices[2];
@@ -10,7 +10,7 @@ pub fn triangle(vertices: &[RasterVertex], uniforms: &Uniforms) -> Vec<Fragment>
     let r = c.screen_position;
     let denominator = (q.y - r.y) * (p.x - r.x) + (r.x - q.x) * (p.y - r.y);
     if denominator.abs() < 0.0001 || vertices.iter().any(|v| v.inverse_w <= 0.0) {
-        return Vec::new();
+        return;
     }
     let min_x = p.x.min(q.x).min(r.x).floor().max(0.0) as i32;
     let max_x =
@@ -28,8 +28,10 @@ pub fn triangle(vertices: &[RasterVertex], uniforms: &Uniforms) -> Vec<Fragment>
         .cross(c.world_position - a.world_position)
         .normalized();
     let center = (a.world_position + b.world_position + c.world_position) / 3.0;
-    let flat_intensity = lighting(face_normal, center, uniforms.light_position);
-    let mut fragments = Vec::new();
+    // La esfera es cerrada; las caras orientadas en sentido contrario no se ven.
+    if face_normal.dot(uniforms.camera_position - center) <= 0.0 {
+        return;
+    }
     for y in min_y..=max_y {
         for x in min_x..=max_x {
             let sx = x as f32 + 0.5;
@@ -50,22 +52,17 @@ pub fn triangle(vertices: &[RasterVertex], uniforms: &Uniforms) -> Vec<Fragment>
             let w = w2 * c.inverse_w / reciprocal;
             let normal = (a.normal * u + b.normal * v + c.normal * w).normalized();
             let world_position = a.world_position * u + b.world_position * v + c.world_position * w;
-            fragments.push(Fragment {
+            emit(Fragment {
                 position: Vector2::new(sx, sy),
                 object_position: a.object_position * u
                     + b.object_position * v
                     + c.object_position * w,
                 world_position,
                 normal,
-                face_normal,
-                uv: a.uv * u + b.uv * v + c.uv * w,
                 color: Vector3::new(1.0, 1.0, 1.0),
                 depth,
                 intensity: lighting(normal, world_position, uniforms.light_position),
-                flat_intensity,
-                gouraud_intensity: a.intensity * w0 + b.intensity * w1 + c.intensity * w2,
             });
         }
     }
-    fragments
 }

@@ -45,8 +45,6 @@ pub fn vertex_shader(vertex: &Vertex, uniforms: &Uniforms) -> RasterVertex {
         object_position: p,
         world_position,
         normal,
-        uv: vertex.tex_coords,
         inverse_w,
-        intensity: lighting(normal, world_position, uniforms.light_position),
     }
 }

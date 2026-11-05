@@ -1,7 +1,7 @@
 use crate::{
     Uniforms,
     fragment::Fragment,
-    patterns::{fbm, mix, sample, smoothstep},
+    patterns::{mix, sample, smoothstep},
 };
 use raylib::prelude::*;
 
@@ -14,10 +14,11 @@ const VORTEX_STRENGTH: f32 = 4.5;
 
 fn vortex(position: Vector3) -> Vector3 {
     let center = Vector3::new(-0.30, -0.12, 1.0).normalized();
-    let distance = position.normalized().dot(center).clamp(-1.0, 1.0).acos();
-    if distance >= VORTEX_RADIUS {
+    let alignment = position.normalized().dot(center).clamp(-1.0, 1.0);
+    if alignment <= VORTEX_RADIUS.cos() {
         return position;
     }
+    let distance = alignment.acos();
 
     // El giro disminuye con la distancia hasta llegar a cero en el borde.
     let influence = 1.0 - smoothstep(0.0, VORTEX_RADIUS, distance);
@@ -49,14 +50,20 @@ pub fn shade(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
     let purple = Vector3::new(0.32, 0.12, 0.62);
     let lavender = Vector3::new(0.76, 0.55, 0.96);
     let cream = Vector3::new(0.98, 0.90, 0.73);
-    let color = mix(purple, lavender, smoothstep(0.12, 0.65, bands));
-    let color = mix(color, cream, smoothstep(0.72, 0.94, bands));
+    let color = mix(purple, lavender, smoothstep(0.28, 0.56, bands));
+    let color = mix(color, cream, smoothstep(0.76, 0.88, bands));
 
     // Las líneas secundarias siguen la misma deformación que las bandas.
-    let detail = fbm(&uniforms.noise, surface * 13.0);
+    let detail = sample(&uniforms.noise, surface * 18.0) * 0.5 + 0.5;
     let lines = (phase * 3.0 + detail * 3.0).sin() * 0.5 + 0.5;
     let line_mask = smoothstep(0.76, 0.95, lines) * (1.0 - smoothstep(0.65, 0.90, bands));
     let color = mix(color, Vector3::new(0.20, 0.78, 0.84), line_mask * 0.55);
+    let fine_lines = (phase * 6.0 + detail * 5.0).sin() * 0.5 + 0.5;
+    let color = mix(
+        color,
+        Vector3::new(0.86, 0.78, 0.98),
+        smoothstep(0.85, 0.98, fine_lines) * 0.22,
+    );
     let color = color * (1.0 - DETAIL_STRENGTH + detail * DETAIL_STRENGTH);
 
     color * (0.16 + 0.84 * fragment.intensity)

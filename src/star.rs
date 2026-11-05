@@ -30,16 +30,19 @@ pub fn shade(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
     let surface = p + warp * WARP_STRENGTH;
 
     let cells = sample(&uniforms.noise, surface * CELL_FREQUENCY + drift).abs();
-    let heat = smoothstep(0.03, 0.48, cells);
+    let heat = smoothstep(0.04, 0.40, cells);
     let orange = Vector3::new(1.0, 0.27, 0.025);
     let gold = Vector3::new(1.0, 0.75, 0.12);
     let cream = Vector3::new(1.0, 0.96, 0.58);
-    let color = mix(orange, gold, smoothstep(0.0, 0.65, heat));
-    let color = mix(color, cream, smoothstep(0.55, 1.0, heat));
+    let color = mix(orange, gold, smoothstep(0.12, 0.52, heat));
+    let color = mix(color, cream, smoothstep(0.70, 0.93, heat));
 
     let activity = fbm(&uniforms.noise, p * 3.5 - drift * 0.45);
     let spots = smoothstep(SPOT_THRESHOLD, SPOT_THRESHOLD + 0.13, activity);
     let color = mix(color, Vector3::new(0.62, 0.09, 0.015), spots * 0.85);
+    // El ruido de mayor frecuencia añade variación dentro de las celdas.
+    let grain = sample(&uniforms.noise, surface * 42.0 + drift) * 0.5 + 0.5;
+    let color = color * (0.86 + grain * 0.14);
 
     let view = (uniforms.camera_position - fragment.world_position).normalized();
     let facing = fragment.normal.dot(view).max(0.0);
