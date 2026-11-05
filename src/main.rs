@@ -3,6 +3,7 @@ use raylib::prelude::*;
 mod controls;
 mod fragment;
 mod framebuffer;
+mod gas;
 mod matrix;
 mod obj;
 mod patterns;
