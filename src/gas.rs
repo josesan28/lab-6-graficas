@@ -9,9 +9,31 @@ const BAND_FREQUENCY: f32 = 22.0;
 const DISTORTION: f32 = 2.6;
 const FLOW_SPEED: f32 = 0.10;
 const DETAIL_STRENGTH: f32 = 0.15;
+const VORTEX_RADIUS: f32 = 0.48;
+const VORTEX_STRENGTH: f32 = 4.5;
+
+fn vortex(position: Vector3) -> Vector3 {
+    let center = Vector3::new(-0.30, -0.12, 1.0).normalized();
+    let distance = position.normalized().dot(center).clamp(-1.0, 1.0).acos();
+    if distance >= VORTEX_RADIUS {
+        return position;
+    }
+
+    // El giro disminuye con la distancia hasta llegar a cero en el borde.
+    let influence = 1.0 - smoothstep(0.0, VORTEX_RADIUS, distance);
+    let angle = VORTEX_STRENGTH * influence;
+    let (sin, cos) = angle.sin_cos();
+
+    // Rota las coordenadas alrededor del eje del vórtice.
+    position * cos + center.cross(position) * sin + center * (center.dot(position) * (1.0 - cos))
+}
 
 pub fn shade(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
-    let p = fragment.object_position;
+    let p = if uniforms.vortex_enabled {
+        vortex(fragment.object_position)
+    } else {
+        fragment.object_position
+    };
 
     // Cada latitud desplaza el patrón a una velocidad diferente.
     let angle = uniforms.time * FLOW_SPEED * (1.0 + 0.35 * (p.y * 6.0).sin());
