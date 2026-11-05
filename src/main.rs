@@ -1,10 +1,12 @@
 use raylib::prelude::*;
 
+mod controls;
 mod fragment;
 mod framebuffer;
 mod matrix;
 mod obj;
 mod pipeline;
+mod shaders;
 mod triangle;
 mod vertex;
 
@@ -14,6 +16,10 @@ const WIDTH: i32 = 960;
 const HEIGHT: i32 = 720;
 
 pub struct Uniforms {
+    pub time: f32,
+    pub camera_position: Vector3,
+    pub shader: shaders::Shader,
+    pub show_normals: bool,
     pub model_matrix: Matrix,
     pub view_matrix: Matrix,
     pub projection_matrix: Matrix,
@@ -30,8 +36,7 @@ fn render(framebuffer: &mut Framebuffer, vertices: &[vertex::Vertex], uniforms: 
         .collect();
     for face in transformed.chunks_exact(3) {
         for fragment in triangle::triangle(face, uniforms) {
-            // Material provisional para comprobar volumen e iluminación.
-            let color = Vector3::new(0.18, 0.65, 1.0) * (0.12 + 0.88 * fragment.intensity);
+            let color = shaders::fragment_shader(&fragment, uniforms);
             framebuffer.point(
                 fragment.position.x as usize,
                 fragment.position.y as usize,
@@ -46,7 +51,11 @@ fn main() {
     let model_path = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/models/sphere.obj");
     let vertices = obj::load(model_path).expect("No se pudo cargar la esfera original");
     println!("Esfera: {} triángulos", vertices.len() / 3);
-    let uniforms = Uniforms {
+    let mut uniforms = Uniforms {
+        time: 0.0,
+        camera_position: Vector3::new(0.0, 0.0, 3.2),
+        shader: shaders::Shader::Rocoso,
+        show_normals: false,
         model_matrix: Matrix::identity(),
         view_matrix: matrix::create_view_matrix(
             Vector3::new(0.0, 0.0, 3.2),
@@ -75,8 +84,24 @@ fn main() {
 
     let smoke_check = std::env::args().any(|arg| arg == "--smoke-check");
     let mut frames = 0;
+    let mut controls = controls::Controls::new();
 
     while !window.window_should_close() {
+        controls.update(&window, &mut uniforms);
+        window.set_window_title(
+            &thread,
+            &format!(
+                "Lab 6 | {} | {} | t={:.1}s | Normales: {}",
+                uniforms.shader.name(),
+                if controls.paused {
+                    "Pausado"
+                } else {
+                    "En marcha"
+                },
+                uniforms.time,
+                if uniforms.show_normals { "sí" } else { "no" },
+            ),
+        );
         framebuffer.clear(background);
         render(&mut framebuffer, &vertices, &uniforms);
         framebuffer.present(&mut window, &thread);
