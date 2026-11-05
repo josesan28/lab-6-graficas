@@ -5,6 +5,7 @@ mod controls;
 mod fragment;
 mod framebuffer;
 mod gas;
+mod hud;
 mod matrix;
 mod night;
 mod obj;
@@ -13,6 +14,7 @@ mod pipeline;
 mod rock;
 mod shaders;
 mod star;
+mod surface;
 mod triangle;
 mod vertex;
 
@@ -47,39 +49,41 @@ fn render(
     framebuffer: &mut Framebuffer,
     vertices: &[vertex::Vertex],
     uniforms: &Uniforms,
-    fragments: &mut Vec<fragment::Fragment>,
+    fragments: &mut Vec<Vec<fragment::Fragment>>,
 ) {
-    fragments.clear();
     let transformed: Vec<_> = vertices
         .iter()
         .map(|vertex| pipeline::vertex_shader(vertex, uniforms))
         .collect();
-    for face in transformed.chunks_exact(3) {
-        triangle::triangle(face, uniforms, |fragment| {
-            fragments.push(fragment);
-        });
-    }
-    // Cada hilo calcula colores de un bloque distinto. Raylib queda en el hilo principal.
     let workers = std::thread::available_parallelism()
-        .map_or(1, |count| count.get())
+        .map_or(1, |n| n.get())
         .min(8);
-    let chunk_size = fragments.len().div_ceil(workers).max(1);
+    fragments.resize_with(workers, Vec::new);
+    // Repartir caras intercaladas balancea ambos hemisferios. Cada hilo conserva
+    // su memoria entre cuadros; Raylib y el z-buffer quedan en el hilo principal.
     std::thread::scope(|scope| {
-        for chunk in fragments.chunks_mut(chunk_size) {
+        for (worker, buffer) in fragments.iter_mut().enumerate() {
+            let transformed = &transformed;
             scope.spawn(move || {
-                for fragment in chunk {
-                    fragment.color = shaders::fragment_shader(fragment, uniforms);
+                buffer.clear();
+                for face in transformed.chunks_exact(3).skip(worker).step_by(workers) {
+                    triangle::triangle(face, uniforms, |mut fragment| {
+                        fragment.color = shaders::fragment_shader(&fragment, uniforms);
+                        buffer.push(fragment);
+                    });
                 }
             });
         }
     });
-    for fragment in fragments {
-        framebuffer.point(
-            fragment.position.x as usize,
-            fragment.position.y as usize,
-            fragment.depth,
-            fragment.color,
-        );
+    for buffer in fragments {
+        for fragment in buffer {
+            framebuffer.point(
+                fragment.position.x as usize,
+                fragment.position.y as usize,
+                fragment.depth,
+                fragment.color,
+            );
+        }
     }
 }
 
@@ -118,11 +122,15 @@ fn main() {
         smooth_normals: true,
     };
     let (mut window, thread) = raylib::init()
-        .size(WIDTH, HEIGHT)
+        .size(WIDTH + hud::WIDTH, HEIGHT)
         .title("Laboratorio 6 - Shaders")
         .build();
     window.set_target_fps(60);
 
+    rock::prepare(&uniforms);
+    clouds::prepare(&uniforms);
+    gas::prepare(&uniforms);
+    star::prepare(&uniforms);
     let mut framebuffer = Framebuffer::new(WIDTH, HEIGHT, &mut window, &thread);
     let mut fragments = Vec::new();
     let background = Color::new(9, 12, 35, 255);
@@ -147,6 +155,7 @@ fn main() {
         };
     }
     let capture = argument("--capture");
+    let capture_window = argument("--capture-window");
     uniforms.specular_enabled = !arguments.iter().any(|arg| arg == "--no-specular");
     uniforms.clouds_enabled = !arguments.iter().any(|arg| arg == "--no-clouds");
     uniforms.night_lights_enabled = !arguments.iter().any(|arg| arg == "--no-night-lights");
@@ -179,20 +188,32 @@ fn main() {
         assert!(distance.is_finite(), "La distancia debe ser finita");
         controls.set_distance(distance);
     }
-    if arguments.iter().any(|arg| arg == "--benchmark") {
+    let benchmark_window = arguments.iter().any(|arg| arg == "--benchmark-window");
+    if benchmark_window || arguments.iter().any(|arg| arg == "--benchmark") {
+        window.set_target_fps(0);
         controls.update(&window, &mut uniforms);
         uniforms.time = fixed_time.unwrap_or(2.0);
         let mut samples = Vec::new();
+        let mut complete_samples = Vec::new();
         for index in 0..10 {
             let start = std::time::Instant::now();
             framebuffer.clear(background);
             render(&mut framebuffer, &vertices, &uniforms, &mut fragments);
+            let cpu_ms = start.elapsed().as_secs_f64() * 1000.0;
+            if benchmark_window {
+                framebuffer.present(&mut window, &thread, &uniforms, controls.paused);
+            }
             if index > 0 {
-                samples.push(start.elapsed().as_secs_f64() * 1000.0);
+                samples.push(cpu_ms);
+                complete_samples.push(start.elapsed().as_secs_f64() * 1000.0);
             }
         }
         samples.sort_by(f64::total_cmp);
         println!("Mediana CPU (9 cuadros): {:.2} ms", samples[4]);
+        if benchmark_window {
+            complete_samples.sort_by(f64::total_cmp);
+            println!("Mediana con presentación y HUD: {:.2} ms", complete_samples[4]);
+        }
         if let Some(path) = capture {
             framebuffer.save(path);
         }
@@ -239,7 +260,11 @@ fn main() {
             framebuffer.save(path);
             break;
         }
-        framebuffer.present(&mut window, &thread);
+        framebuffer.present(&mut window, &thread, &uniforms, controls.paused);
+        if let Some(path) = capture_window.filter(|_| frames >= 2) {
+            window.take_screenshot(&thread, path);
+            break;
+        }
         frames += 1;
         if smoke_check && frames >= 3 {
             break;

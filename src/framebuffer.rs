@@ -5,6 +5,7 @@ pub struct Framebuffer {
     depths: Vec<f32>,
     pixels: Vec<u8>,
     texture: Texture2D,
+    hud: crate::hud::Hud,
 }
 
 impl Framebuffer {
@@ -13,11 +14,13 @@ impl Framebuffer {
         let texture = window
             .load_texture_from_image(thread, &image)
             .expect("No se pudo crear la textura del framebuffer");
+        let hud = crate::hud::Hud::new(window, thread);
         Self {
             width: width as usize,
             depths: vec![f32::INFINITY; (width * height) as usize],
             pixels: vec![0; (width * height * 4) as usize],
             texture,
+            hud,
         }
     }
 
@@ -58,12 +61,19 @@ impl Framebuffer {
         );
     }
 
-    pub fn present(&mut self, window: &mut RaylibHandle, thread: &RaylibThread) {
+    pub fn present(
+        &mut self,
+        window: &mut RaylibHandle,
+        thread: &RaylibThread,
+        uniforms: &crate::Uniforms,
+        paused: bool,
+    ) {
         self.texture
             .update_texture(&self.pixels)
             .expect("No se pudo actualizar la textura del framebuffer");
         let mut drawing = window.begin_drawing(thread);
         drawing.clear_background(Color::BLACK);
         drawing.draw_texture(&self.texture, 0, 0, Color::WHITE);
+        crate::hud::draw(&mut drawing, &self.hud, self.width as i32, uniforms, paused);
     }
 }

@@ -95,7 +95,7 @@ impl Controls {
             uniforms.time += delta;
         }
 
-        if window.is_key_pressed(KeyboardKey::KEY_HOME) {
+        if window.is_key_pressed(KeyboardKey::KEY_R) {
             *self = Self::new();
             uniforms.time = 0.0;
             uniforms.show_normals = false;
