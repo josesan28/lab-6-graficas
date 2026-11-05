@@ -25,7 +25,7 @@ pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
 
     match uniforms.shader {
         Shader::Estrella => crate::star::shade(fragment, uniforms),
-        Shader::Rocoso => Vector3::new(0.18, 0.65, 1.0) * (0.12 + 0.88 * fragment.intensity),
+        Shader::Rocoso => crate::rock::shade(fragment, uniforms),
         Shader::Gaseoso => Vector3::new(0.7, 0.35, 0.9) * (0.12 + 0.88 * fragment.intensity),
     }
 }

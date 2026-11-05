@@ -7,6 +7,7 @@ mod matrix;
 mod obj;
 mod patterns;
 mod pipeline;
+mod rock;
 mod shaders;
 mod star;
 mod triangle;
