@@ -5,8 +5,10 @@ mod fragment;
 mod framebuffer;
 mod matrix;
 mod obj;
+mod patterns;
 mod pipeline;
 mod shaders;
+mod star;
 mod triangle;
 mod vertex;
 
@@ -16,6 +18,7 @@ const WIDTH: i32 = 960;
 const HEIGHT: i32 = 720;
 
 pub struct Uniforms {
+    pub noise: noise::OpenSimplex,
     pub time: f32,
     pub camera_position: Vector3,
     pub shader: shaders::Shader,
@@ -52,6 +55,7 @@ fn main() {
     let vertices = obj::load(model_path).expect("No se pudo cargar la esfera original");
     println!("Esfera: {} triángulos", vertices.len() / 3);
     let mut uniforms = Uniforms {
+        noise: noise::OpenSimplex::new(42),
         time: 0.0,
         camera_position: Vector3::new(0.0, 0.0, 3.2),
         shader: shaders::Shader::Rocoso,
@@ -85,9 +89,37 @@ fn main() {
     let smoke_check = std::env::args().any(|arg| arg == "--smoke-check");
     let mut frames = 0;
     let mut controls = controls::Controls::new();
+    let arguments: Vec<String> = std::env::args().collect();
+    let argument = |flag: &str| {
+        arguments.iter().position(|arg| arg == flag).map(|index| {
+            arguments
+                .get(index + 1)
+                .unwrap_or_else(|| panic!("Falta el valor de {flag}"))
+        })
+    };
+    if let Some(shader) = argument("--shader") {
+        uniforms.shader = match shader.as_str() {
+            "1" => shaders::Shader::Estrella,
+            "2" => shaders::Shader::Rocoso,
+            "3" => shaders::Shader::Gaseoso,
+            _ => panic!("El shader debe ser 1, 2 o 3"),
+        };
+    }
+    let capture = argument("--capture");
+    let fixed_time = argument("--time").map(|value| {
+        let time: f32 = value.parse().expect("El tiempo debe ser un número");
+        assert!(
+            time.is_finite() && time >= 0.0,
+            "El tiempo debe ser finito y no negativo"
+        );
+        time
+    });
 
     while !window.window_should_close() {
         controls.update(&window, &mut uniforms);
+        if let Some(time) = fixed_time {
+            uniforms.time = time;
+        }
         window.set_window_title(
             &thread,
             &format!(
@@ -104,6 +136,10 @@ fn main() {
         );
         framebuffer.clear(background);
         render(&mut framebuffer, &vertices, &uniforms);
+        if let Some(path) = capture {
+            framebuffer.save(path);
+            break;
+        }
         framebuffer.present(&mut window, &thread);
         frames += 1;
         if smoke_check && frames >= 3 {

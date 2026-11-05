@@ -41,6 +41,23 @@ impl Framebuffer {
         }
     }
 
+    pub fn save(&self, path: &str) {
+        let height = self.depths.len() / self.width;
+        let mut image = Image::gen_image_color(self.width as i32, height as i32, Color::BLACK);
+        for (index, pixel) in self.pixels.chunks_exact(4).enumerate() {
+            image.draw_pixel(
+                (index % self.width) as i32,
+                (index / self.width) as i32,
+                Color::new(pixel[0], pixel[1], pixel[2], pixel[3]),
+            );
+        }
+        image.export_image(path);
+        assert!(
+            std::path::Path::new(path).is_file(),
+            "No se pudo guardar la captura"
+        );
+    }
+
     pub fn present(&mut self, window: &mut RaylibHandle, thread: &RaylibThread) {
         self.texture
             .update_texture(&self.pixels)

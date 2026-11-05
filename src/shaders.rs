@@ -23,9 +23,8 @@ pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
         return fragment.normal * 0.5 + Vector3::new(0.5, 0.5, 0.5);
     }
 
-    // Los colores son provisionales hasta implementar cada material procedural.
     match uniforms.shader {
-        Shader::Estrella => Vector3::new(1.0, 0.65, 0.12),
+        Shader::Estrella => crate::star::shade(fragment, uniforms),
         Shader::Rocoso => Vector3::new(0.18, 0.65, 1.0) * (0.12 + 0.88 * fragment.intensity),
         Shader::Gaseoso => Vector3::new(0.7, 0.35, 0.9) * (0.12 + 0.88 * fragment.intensity),
     }
