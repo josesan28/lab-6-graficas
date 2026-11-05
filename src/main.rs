@@ -6,6 +6,7 @@ mod fragment;
 mod framebuffer;
 mod gas;
 mod matrix;
+mod night;
 mod obj;
 mod patterns;
 mod pipeline;
@@ -29,6 +30,8 @@ pub struct Uniforms {
     pub specular_enabled: bool,
     pub clouds_enabled: bool,
     pub cloud_coverage: f32,
+    pub night_lights_enabled: bool,
+    pub light_angle: f32,
     pub model_matrix: Matrix,
     pub view_matrix: Matrix,
     pub projection_matrix: Matrix,
@@ -69,6 +72,8 @@ fn main() {
         specular_enabled: true,
         clouds_enabled: true,
         cloud_coverage: 0.45,
+        night_lights_enabled: true,
+        light_angle: (-3.0_f32).atan2(5.0),
         model_matrix: Matrix::identity(),
         view_matrix: matrix::create_view_matrix(
             Vector3::new(0.0, 0.0, 3.2),
@@ -117,6 +122,12 @@ fn main() {
     let capture = argument("--capture");
     uniforms.specular_enabled = !arguments.iter().any(|arg| arg == "--no-specular");
     uniforms.clouds_enabled = !arguments.iter().any(|arg| arg == "--no-clouds");
+    uniforms.night_lights_enabled = !arguments.iter().any(|arg| arg == "--no-night-lights");
+    if let Some(value) = argument("--light-angle") {
+        let degrees: f32 = value.parse().expect("El ángulo debe ser un número");
+        assert!(degrees.is_finite(), "El ángulo debe ser finito");
+        uniforms.light_angle = degrees.rem_euclid(360.0).to_radians();
+    }
     if let Some(value) = argument("--cloud-coverage") {
         let coverage: f32 = value.parse().expect("La cobertura debe ser un número");
         assert!(
@@ -142,7 +153,7 @@ fn main() {
         window.set_window_title(
             &thread,
             &format!(
-                "Lab 6 | {} | {} | t={:.1}s | Normales: {} | Reflejos [E]: {} | Nubes [C]: {} {:.0}%",
+                "{} | {} t={:.1}s | N:{} E:{} C:{} {:.0}% V:{} | Luz:{:.0}°",
                 uniforms.shader.name(),
                 if controls.paused {
                     "Pausado"
@@ -158,6 +169,12 @@ fn main() {
                 },
                 if uniforms.clouds_enabled { "sí" } else { "no" },
                 uniforms.cloud_coverage * 100.0,
+                if uniforms.night_lights_enabled {
+                    "sí"
+                } else {
+                    "no"
+                },
+                uniforms.light_angle.to_degrees(),
             ),
         );
         framebuffer.clear(background);

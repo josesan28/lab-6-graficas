@@ -79,5 +79,6 @@ pub fn shade(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
     let water_mask = 1.0 - land_mask;
     let surface =
         diffuse + Vector3::new(0.83, 0.94, 1.0) * (specular * WATER_SPECULAR * water_mask);
+    let surface = surface + crate::night::emission(fragment, uniforms, land_mask, height);
     crate::clouds::blend(surface, fragment, uniforms)
 }

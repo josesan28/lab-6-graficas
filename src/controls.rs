@@ -38,6 +38,15 @@ impl Controls {
         if window.is_key_pressed(KeyboardKey::KEY_C) {
             uniforms.clouds_enabled = !uniforms.clouds_enabled;
         }
+        if window.is_key_pressed(KeyboardKey::KEY_V) {
+            uniforms.night_lights_enabled = !uniforms.night_lights_enabled;
+        }
+        if window.is_key_down(KeyboardKey::KEY_J) {
+            uniforms.light_angle -= delta;
+        }
+        if window.is_key_down(KeyboardKey::KEY_L) {
+            uniforms.light_angle += delta;
+        }
         if window.is_key_down(KeyboardKey::KEY_Z) {
             uniforms.cloud_coverage -= delta * 0.25;
         }
@@ -80,7 +89,17 @@ impl Controls {
             *self = Self::new();
             uniforms.time = 0.0;
             uniforms.show_normals = false;
+            uniforms.light_angle = (-3.0_f32).atan2(5.0);
         }
+
+        // La luz gira alrededor del planeta sin cambiar su altura.
+        uniforms.light_angle = uniforms.light_angle.rem_euclid(std::f32::consts::TAU);
+        let radius = 34.0_f32.sqrt();
+        uniforms.light_position = Vector3::new(
+            radius * uniforms.light_angle.sin(),
+            4.0,
+            radius * uniforms.light_angle.cos(),
+        );
 
         uniforms.camera_position = Vector3::new(
             self.distance * self.pitch.cos() * self.yaw.sin(),
