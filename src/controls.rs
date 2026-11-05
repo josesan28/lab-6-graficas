@@ -35,6 +35,16 @@ impl Controls {
         if window.is_key_pressed(KeyboardKey::KEY_E) {
             uniforms.specular_enabled = !uniforms.specular_enabled;
         }
+        if window.is_key_pressed(KeyboardKey::KEY_C) {
+            uniforms.clouds_enabled = !uniforms.clouds_enabled;
+        }
+        if window.is_key_down(KeyboardKey::KEY_Z) {
+            uniforms.cloud_coverage -= delta * 0.25;
+        }
+        if window.is_key_down(KeyboardKey::KEY_X) {
+            uniforms.cloud_coverage += delta * 0.25;
+        }
+        uniforms.cloud_coverage = uniforms.cloud_coverage.clamp(0.0, 1.0);
         if window.is_key_pressed(KeyboardKey::KEY_SPACE) {
             self.paused = !self.paused;
         }

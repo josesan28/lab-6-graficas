@@ -64,15 +64,12 @@ pub fn shade(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
     let color = mix(ocean, terrain, land_mask);
 
     let diffuse = color * (0.16 + 0.84 * fragment.intensity);
-    if !uniforms.specular_enabled {
-        return diffuse;
-    }
 
     // El reflejo depende de la luz y de la posición de la cámara.
     let light = (uniforms.light_position - fragment.world_position).normalized();
     let view = (uniforms.camera_position - fragment.world_position).normalized();
     let halfway = (light + view).normalized();
-    let specular = if fragment.normal.dot(light) > 0.0 {
+    let specular = if uniforms.specular_enabled && fragment.normal.dot(light) > 0.0 {
         fragment.normal.dot(halfway).max(0.0).powf(WATER_SHININESS)
     } else {
         0.0
@@ -80,5 +77,7 @@ pub fn shade(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
 
     // La máscara limita el reflejo al agua y mantiene la tierra mate.
     let water_mask = 1.0 - land_mask;
-    diffuse + Vector3::new(0.83, 0.94, 1.0) * (specular * WATER_SPECULAR * water_mask)
+    let surface =
+        diffuse + Vector3::new(0.83, 0.94, 1.0) * (specular * WATER_SPECULAR * water_mask);
+    crate::clouds::blend(surface, fragment, uniforms)
 }
