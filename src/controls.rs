@@ -32,6 +32,9 @@ impl Controls {
         if window.is_key_pressed(KeyboardKey::KEY_N) {
             uniforms.show_normals = !uniforms.show_normals;
         }
+        if window.is_key_pressed(KeyboardKey::KEY_E) {
+            uniforms.specular_enabled = !uniforms.specular_enabled;
+        }
         if window.is_key_pressed(KeyboardKey::KEY_SPACE) {
             self.paused = !self.paused;
         }

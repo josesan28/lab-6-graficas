@@ -25,6 +25,7 @@ pub struct Uniforms {
     pub camera_position: Vector3,
     pub shader: shaders::Shader,
     pub show_normals: bool,
+    pub specular_enabled: bool,
     pub model_matrix: Matrix,
     pub view_matrix: Matrix,
     pub projection_matrix: Matrix,
@@ -62,6 +63,7 @@ fn main() {
         camera_position: Vector3::new(0.0, 0.0, 3.2),
         shader: shaders::Shader::Rocoso,
         show_normals: false,
+        specular_enabled: true,
         model_matrix: Matrix::identity(),
         view_matrix: matrix::create_view_matrix(
             Vector3::new(0.0, 0.0, 3.2),
@@ -108,6 +110,7 @@ fn main() {
         };
     }
     let capture = argument("--capture");
+    uniforms.specular_enabled = !arguments.iter().any(|arg| arg == "--no-specular");
     let fixed_time = argument("--time").map(|value| {
         let time: f32 = value.parse().expect("El tiempo debe ser un número");
         assert!(
@@ -125,7 +128,7 @@ fn main() {
         window.set_window_title(
             &thread,
             &format!(
-                "Lab 6 | {} | {} | t={:.1}s | Normales: {}",
+                "Lab 6 | {} | {} | t={:.1}s | Normales: {} | Reflejos [E]: {}",
                 uniforms.shader.name(),
                 if controls.paused {
                     "Pausado"
@@ -134,6 +137,11 @@ fn main() {
                 },
                 uniforms.time,
                 if uniforms.show_normals { "sí" } else { "no" },
+                if uniforms.specular_enabled {
+                    "sí"
+                } else {
+                    "no"
+                },
             ),
         );
         framebuffer.clear(background);

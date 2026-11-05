@@ -9,6 +9,8 @@ const CONTINENT_FREQUENCY: f32 = 2.8;
 const SEA_LEVEL: f32 = 0.49;
 const COAST_WIDTH: f32 = 0.025;
 const SNOW_HEIGHT: f32 = 0.67;
+const WATER_SHININESS: f32 = 72.0;
+const WATER_SPECULAR: f32 = 0.85;
 
 fn height_at(position: Vector3, uniforms: &Uniforms) -> f32 {
     let warp_position = position * 2.0;
@@ -61,5 +63,22 @@ pub fn shade(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
     let terrain = mix(terrain, Vector3::new(0.91, 0.97, 1.0), snow);
     let color = mix(ocean, terrain, land_mask);
 
-    color * (0.16 + 0.84 * fragment.intensity)
+    let diffuse = color * (0.16 + 0.84 * fragment.intensity);
+    if !uniforms.specular_enabled {
+        return diffuse;
+    }
+
+    // El reflejo depende de la luz y de la posición de la cámara.
+    let light = (uniforms.light_position - fragment.world_position).normalized();
+    let view = (uniforms.camera_position - fragment.world_position).normalized();
+    let halfway = (light + view).normalized();
+    let specular = if fragment.normal.dot(light) > 0.0 {
+        fragment.normal.dot(halfway).max(0.0).powf(WATER_SHININESS)
+    } else {
+        0.0
+    };
+
+    // La máscara limita el reflejo al agua y mantiene la tierra mate.
+    let water_mask = 1.0 - land_mask;
+    diffuse + Vector3::new(0.83, 0.94, 1.0) * (specular * WATER_SPECULAR * water_mask)
 }
