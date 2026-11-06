@@ -51,9 +51,6 @@ impl Controls {
         if window.is_key_pressed(KeyboardKey::KEY_U) {
             uniforms.aurora_enabled = !uniforms.aurora_enabled;
         }
-        if window.is_key_pressed(KeyboardKey::KEY_N) {
-            uniforms.show_normals = !uniforms.show_normals;
-        }
         if window.is_key_pressed(KeyboardKey::KEY_E) {
             uniforms.specular_enabled = !uniforms.specular_enabled;
         }
@@ -116,7 +113,6 @@ impl Controls {
         if window.is_key_pressed(KeyboardKey::KEY_R) {
             *self = Self::new();
             uniforms.time = 0.0;
-            uniforms.show_normals = false;
             uniforms.light_angle = (-3.0_f32).atan2(5.0);
         }
 

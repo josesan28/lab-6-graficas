@@ -30,7 +30,6 @@ pub struct Uniforms {
     pub time: f32,
     pub camera_position: Vector3,
     pub shader: shaders::Shader,
-    pub show_normals: bool,
     pub specular_enabled: bool,
     pub clouds_enabled: bool,
     pub cloud_coverage: f32,
@@ -101,7 +100,6 @@ fn main() {
         time: 0.0,
         camera_position: Vector3::new(0.0, 0.0, 3.2),
         shader: shaders::Shader::Rocoso,
-        show_normals: false,
         specular_enabled: true,
         clouds_enabled: true,
         cloud_coverage: 0.45,
@@ -203,7 +201,6 @@ fn main() {
         assert!(distance.is_finite(), "La distancia debe ser finita");
         controls.set_distance(distance);
     }
-    let benchmark_window = arguments.iter().any(|arg| arg == "--benchmark-window");
     if let Some(directory) = argument("--capture-demo") {
         std::fs::create_dir_all(directory).expect("No se pudo crear la carpeta de evidencia");
         for frame in 0..16 {
@@ -222,40 +219,6 @@ fn main() {
         }
         return;
     }
-    if benchmark_window || arguments.iter().any(|arg| arg == "--benchmark") {
-        window.set_target_fps(0);
-        controls.update(&window, &mut uniforms);
-        uniforms.time = fixed_time.unwrap_or(2.0);
-        let mut samples = Vec::new();
-        let mut complete_samples = Vec::new();
-        for index in 0..10 {
-            let start = std::time::Instant::now();
-            framebuffer.clear(background);
-            render(&mut framebuffer, &vertices, &uniforms, &mut fragments);
-            let cpu_ms = start.elapsed().as_secs_f64() * 1000.0;
-            if benchmark_window {
-                framebuffer.present(&mut window, &thread, &uniforms, controls.paused);
-            }
-            if index > 0 {
-                samples.push(cpu_ms);
-                complete_samples.push(start.elapsed().as_secs_f64() * 1000.0);
-            }
-        }
-        samples.sort_by(f64::total_cmp);
-        println!("Mediana CPU (9 cuadros): {:.2} ms", samples[4]);
-        if benchmark_window {
-            complete_samples.sort_by(f64::total_cmp);
-            println!(
-                "Mediana con presentación y HUD: {:.2} ms",
-                complete_samples[4]
-            );
-        }
-        if let Some(path) = capture {
-            framebuffer.save(path);
-        }
-        return;
-    }
-
     while !window.window_should_close() {
         controls.update(&window, &mut uniforms);
         if let Some(time) = fixed_time {
@@ -264,15 +227,13 @@ fn main() {
         window.set_window_title(
             &thread,
             &format!(
-                "{} | {} t={:.1}s | N:{} E:{} C:{} {:.0}% V:{} T:{} B:{} | Luz:{:.0}°",
+                "{}{} | E:{} C:{} {:.0}% V:{} T:{} B:{} | Luz:{:.0}°",
                 uniforms.shader.name(),
                 if controls.paused {
-                    "Pausado"
+                    " | Pausado"
                 } else {
-                    "En marcha"
+                    ""
                 },
-                uniforms.time,
-                if uniforms.show_normals { "sí" } else { "no" },
                 if uniforms.specular_enabled {
                     "sí"
                 } else {

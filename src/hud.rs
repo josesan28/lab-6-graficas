@@ -68,12 +68,9 @@ pub fn draw(drawing: &mut RaylibDrawHandle, hud: &Hud, x: i32, uniforms: &Unifor
             }
         };
     write(drawing, uniforms.shader.name(), x + 22, 28, 25.0, text);
-    let status = format!(
-        "{} · {:.1} s",
-        if paused { "Pausado" } else { "En marcha" },
-        uniforms.time
-    );
-    write(drawing, &status, x + 22, 59, 18.0, muted);
+    if paused {
+        write(drawing, "Pausado", x + 22, 59, 18.0, muted);
+    }
     let mut y = 85;
     let mut row = |key: &str, label: &str, heading: bool| {
         if heading {
@@ -99,11 +96,6 @@ pub fn draw(drawing: &mut RaylibDrawHandle, hud: &Hud, x: i32, uniforms: &Unifor
     row("J / L", "Girar la luz", false);
     row("R", "Reiniciar", false);
     row("", "Visualización", true);
-    row(
-        "N",
-        &format!("Normales: {}", state(uniforms.show_normals)),
-        false,
-    );
     row("Espacio", if paused { "Reanudar" } else { "Pausar" }, false);
     match uniforms.shader {
         Shader::Rocoso => {

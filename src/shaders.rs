@@ -23,10 +23,6 @@ impl Shader {
 }
 
 pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
-    if uniforms.show_normals {
-        return fragment.normal * 0.5 + Vector3::new(0.5, 0.5, 0.5);
-    }
-
     match uniforms.shader {
         Shader::Volcanico => crate::volcanic::shade(fragment, uniforms),
         Shader::Helado => crate::frozen::shade(fragment, uniforms),

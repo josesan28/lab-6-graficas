@@ -38,7 +38,6 @@ al iniciar.
 | Flechas arriba / abajo | Acercar / alejar la cámara |
 | `J` / `L` | Girar la luz |
 | Espacio | Pausar o reanudar la animación |
-| `N` | Activar o desactivar la visualización de normales |
 | `E` | Activar o desactivar reflejos en el planeta rocoso y el helado |
 | `C` | Activar o desactivar nubes en el planeta rocoso y el helado |
 | `Z` / `X` | Reducir / aumentar la cobertura de nubes |
@@ -48,7 +47,7 @@ al iniciar.
 | `P` | Activar o desactivar el parallax del planeta volcánico |
 | `H` | Activar o desactivar las sombras de nubes del planeta helado |
 | `U` | Activar o desactivar las auroras del planeta helado |
-| `R` | Reiniciar cámara, luz y tiempo; reanudar y desactivar normales |
+| `R` | Reiniciar cámara, luz y tiempo; reanudar |
 | `Esc` | Salir |
 
 La pausa permite seguir moviendo la cámara y la luz. El reinicio conserva el
